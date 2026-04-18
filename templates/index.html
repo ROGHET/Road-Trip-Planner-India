@@ -1,0 +1,1988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Road Trip Planner</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+    <style>
+        :root {
+            --ink: #14324a;
+            --sea: #1f6f8b;
+            --accent: #f28c28;
+            --accent-strong: #f6b73c;
+            --accent-soft: #fff1dd;
+            --surface: rgba(255, 255, 255, 0.9);
+            --surface-strong: #ffffff;
+            --surface-muted: #f2f5f9;
+            --line: rgba(20, 50, 74, 0.12);
+            --text: #1b2430;
+            --muted: #64748b;
+            --success: #2e8b57;
+            --danger: #d64045;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            height: 100vh;
+            min-height: 100vh;
+            font-family: "Outfit", "Aptos", "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(246, 183, 60, 0.25), transparent 34%),
+                radial-gradient(circle at bottom right, rgba(31, 111, 139, 0.22), transparent 38%),
+                linear-gradient(135deg, #f3f7fb 0%, #dce8f3 100%);
+            overflow: hidden;
+        }
+
+        .main-container {
+            position: relative;
+            display: flex;
+            height: 100vh;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 420px;
+            max-width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 18px 50px rgba(20, 50, 74, 0.18);
+            overflow: hidden;
+            z-index: 1000;
+        }
+
+        .header {
+            flex: 0 0 auto;
+            padding: 18px 20px;
+            color: #fff;
+            background:
+                radial-gradient(circle at top right, rgba(246, 183, 60, 0.25), transparent 36%),
+                linear-gradient(145deg, var(--ink) 0%, var(--sea) 100%);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            margin-top: 8px;
+            max-width: 28ch;
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.82);
+            line-height: 1.45;
+        }
+
+        .header-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.88);
+        }
+
+        .header-chip i,
+        .title-icon i,
+        .section-title i,
+        .label-with-icon i,
+        .metric-icon,
+        .algo-btn i,
+        .btn i,
+        .result-heading i,
+        .legend-row i {
+            width: 16px;
+            height: 16px;
+            stroke-width: 2.1;
+        }
+
+        .title-block {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .title-icon {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(246, 183, 60, 0.3), rgba(255, 255, 255, 0.12));
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+
+        .title-copy h1 {
+            font-size: 1.55rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .title-copy p {
+            margin-top: 6px;
+            font-size: 0.88rem;
+            line-height: 1.35;
+        }
+
+        .content {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 22px 22px 32px;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-gutter: stable;
+        }
+
+        .section-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 0.76rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .content::-webkit-scrollbar-track {
+            background: rgba(20, 50, 74, 0.05);
+            border-radius: 999px;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background: rgba(20, 50, 74, 0.22);
+            border-radius: 999px;
+        }
+
+        .control-card,
+        .results-panel,
+        .comparison-panel {
+            margin-bottom: 18px;
+            padding: 18px;
+            background: var(--surface-strong);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            box-shadow: 0 10px 24px rgba(20, 50, 74, 0.08);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .metric-card {
+            padding: 16px;
+            background: var(--surface-strong);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            box-shadow: 0 10px 24px rgba(20, 50, 74, 0.06);
+        }
+
+        .metric-icon {
+            color: var(--sea);
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .metric-value {
+            margin-top: 8px;
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .metric-subtext {
+            margin-top: 6px;
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        .algorithm-toggle {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .algo-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--surface-muted);
+            color: var(--text);
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .algo-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px rgba(20, 50, 74, 0.08);
+        }
+
+        .algo-btn.active {
+            background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent) 100%);
+            color: var(--ink);
+            border-color: transparent;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .label-with-icon {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .label-with-icon i {
+            color: var(--sea);
+        }
+
+        select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid rgba(20, 50, 74, 0.16);
+            border-radius: 14px;
+            background: var(--surface-muted);
+            color: var(--text);
+            font: inherit;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        select:hover,
+        select:focus {
+            outline: none;
+            border-color: rgba(31, 111, 139, 0.5);
+            box-shadow: 0 0 0 4px rgba(31, 111, 139, 0.08);
+            background: #fff;
+        }
+
+        .stops-container {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .stop-item {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+        }
+
+        .stop-remove {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 12px;
+            background: #fee2e2;
+            color: var(--danger);
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .stop-remove:hover {
+            background: #fecaca;
+        }
+
+        .stop-remove i {
+            width: 14px;
+            height: 14px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 16px;
+            border: 1px solid transparent;
+            border-radius: 14px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: wait;
+            transform: none;
+        }
+
+        .btn-primary {
+            color: var(--ink);
+            background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent) 100%);
+            box-shadow: 0 12px 20px rgba(242, 140, 40, 0.28);
+        }
+
+        .btn-add-stop {
+            margin-bottom: 18px;
+            color: #fff;
+            background: linear-gradient(135deg, #287271 0%, #1f6f8b 100%);
+        }
+
+        .btn-secondary {
+            color: var(--ink);
+            background: var(--surface-strong);
+            border-color: var(--line);
+        }
+
+        .btn-secondary i {
+            color: var(--sea);
+        }
+
+        .loading {
+            display: none;
+            padding: 20px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .spinner {
+            width: 34px;
+            height: 34px;
+            margin: 0 auto 10px;
+            border: 3px solid rgba(20, 50, 74, 0.12);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .results-panel,
+        .comparison-panel,
+        .export-actions {
+            /* Handled by parent container visibility or JS */
+        }
+
+        .result-item + .result-item {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--line);
+        }
+
+        .result-heading {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-heading i {
+            color: var(--sea);
+        }
+
+        .result-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .result-value {
+            margin-top: 6px;
+            font-size: 1.65rem;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .result-subtext {
+            margin-top: 6px;
+            font-size: 0.84rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .chart-panel {
+            margin-top: 18px;
+            padding: 14px;
+            background: var(--surface-muted);
+            border-radius: 16px;
+        }
+
+        .chart-wrap {
+            height: 180px;
+            margin-top: 12px;
+        }
+
+        .steps-list {
+            margin-top: 12px;
+            max-height: 280px;
+            overflow-y: auto;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--surface-strong);
+            scrollbar-width: thin;
+        }
+
+        .step-item {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: center;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .step-item:last-child {
+            border-bottom: none;
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+            background: var(--ink);
+            color: #fff;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .step-text {
+            font-size: 0.92rem;
+            line-height: 1.4;
+        }
+
+        .step-distance {
+            text-align: right;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--sea);
+        }
+
+        .comparison-panel {
+            background: var(--accent-soft);
+            border-color: rgba(242, 140, 40, 0.22);
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .comparison-chart-panel {
+            margin-top: 14px;
+        }
+
+        .comparison-chart-wrap {
+            height: 150px;
+        }
+
+        .comparison-card {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.84);
+            border-radius: 14px;
+        }
+
+        .comparison-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comparison-title i {
+            width: 15px;
+            height: 15px;
+            color: var(--sea);
+        }
+
+        .comparison-card strong {
+            color: var(--ink);
+        }
+
+        .comparison-card span {
+            display: block;
+            margin-top: 6px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--sea);
+        }
+
+        .export-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .export-checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface-muted);
+            padding: 10px 16px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .export-checkbox-group:hover {
+            background: var(--line);
+        }
+
+        .export-checkbox-group input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .export-checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--ink);
+            white-space: nowrap;
+        }
+
+        #map {
+            flex: 1;
+            min-height: 100vh;
+            background: #d9e4ef;
+        }
+
+        .map-legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 900;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(20, 50, 74, 0.9);
+            color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 16px 30px rgba(20, 50, 74, 0.18);
+        }
+
+        .map-legend h3 {
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .legend-row {
+            display: grid;
+            grid-template-columns: 12px 1fr 18px;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.85rem;
+        }
+
+        .legend-row i {
+            color: rgba(255, 255, 255, 0.75);
+            justify-self: end;
+        }
+
+        .legend-row + .legend-row {
+            margin-top: 10px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+        }
+
+        @media (max-width: 980px) {
+            body {
+                overflow: auto;
+            }
+
+            .main-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: 58vh;
+                max-height: 58vh;
+            }
+
+            #map {
+                min-height: 42vh;
+            }
+
+            .map-legend {
+                top: auto;
+                bottom: 20px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .content {
+                padding: 18px 18px 28px;
+            }
+
+            .metrics-grid,
+            .algorithm-toggle,
+            .comparison-grid,
+            .export-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .step-item {
+                grid-template-columns: auto minmax(0, 1fr);
+            }
+
+            .step-distance {
+                grid-column: 2;
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <aside class="sidebar">
+            <header class="header">
+                <div class="header-chip">
+                    <i data-lucide="scan-search"></i>
+                    <span>Road Trip Planner</span>
+                </div>
+                <div style="margin-left: 12px; font-size: 0.75rem; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: 0.1em; text-transform: uppercase;">By Harshit Rawat</div>
+                <div class="title-block">
+                    <div class="title-icon">
+                        <i data-lucide="map-pinned"></i>
+                    </div>
+                    <div class="title-copy">
+                        <h1>Road Trip Guide</h1>
+                        <p>Plan long drives with toll estimates, highway guidance, and a print-ready travel brief.</p>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="section-title">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Network Overview</span>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <i data-lucide="building-2" class="metric-icon"></i>
+                        <div class="metric-label">Cities</div>
+                        <div class="metric-value" id="metricNodes">--</div>
+                        <div class="metric-subtext">Available nodes in the graph</div>
+                    </div>
+                    <div class="metric-card">
+                        <i data-lucide="git-branch-plus" class="metric-icon"></i>
+                        <div class="metric-label">Routes</div>
+                        <div class="metric-value" id="metricEdges">--</div>
+                        <div class="metric-subtext">Weighted links between cities</div>
+                    </div>
+                    <div class="metric-card">
+                        <i data-lucide="network" class="metric-icon"></i>
+                        <div class="metric-label">Connectivity</div>
+                        <div class="metric-value" id="metricConnectivity">--</div>
+                        <div class="metric-subtext">Reachable city pairs</div>
+                    </div>
+                    <div class="metric-card">
+                        <i data-lucide="ruler" class="metric-icon"></i>
+                        <div class="metric-label">Network Reach</div>
+                        <div class="metric-value" id="metricDiameter">--</div>
+                        <div class="metric-subtext">Longest shortest-path distance</div>
+                    </div>
+                </div>
+
+                <section class="control-card">
+                    <div class="section-title">
+                        <i data-lucide="route"></i>
+                        <span>Route Planner</span>
+                    </div>
+                    <div class="algorithm-toggle">
+                        <button type="button" class="algo-btn active" onclick="setAlgorithm('dijkstra', this)">
+                            <i data-lucide="navigation"></i>
+                            <span>Dijkstra</span>
+                        </button>
+                        <button type="button" class="algo-btn" onclick="setAlgorithm('floyd_warshall', this)">
+                            <i data-lucide="binary"></i>
+                            <span>Warshall</span>
+                        </button>
+                    </div>
+
+                    <form id="routeForm" onsubmit="calculateRoute(event)">
+                        <div class="form-group">
+                            <label for="src">
+                                <span class="label-with-icon">
+                                    <i data-lucide="circle-dot"></i>
+                                    <span>Source city</span>
+                                </span>
+                            </label>
+                            <select id="src" required></select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="stopsContainer">
+                                <span class="label-with-icon">
+                                    <i data-lucide="waypoints"></i>
+                                    <span>Intermediate stops</span>
+                                </span>
+                            </label>
+                            <div class="stops-container" id="stopsContainer"></div>
+                            <button type="button" class="btn btn-add-stop" onclick="addStop()">
+                                <i data-lucide="plus"></i>
+                                <span>Add stop</span>
+                            </button>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dst">
+                                <span class="label-with-icon">
+                                    <i data-lucide="map-pin"></i>
+                                    <span>Destination city</span>
+                                </span>
+                            </label>
+                            <select id="dst" required></select>
+                        </div>
+
+
+                        <div class="form-group" style="margin-top: 24px; display: grid; grid-template-columns: 1fr auto; gap: 12px;">
+                            <button type="submit" class="btn btn-primary">
+                                <i data-lucide="arrow-right"></i>
+                                <span>Build road trip</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="resetPlanner()" style="width: auto; padding-left: 20px; padding-right: 20px;" title="Reset Trip">
+                                <i data-lucide="refresh-cw"></i>
+                                <span>Reset</span>
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Checking the network and assembling your road trip guide.</p>
+                </div>
+
+                <div id="resultsOverview" style="display: none;">
+                    <section class="results-panel">
+                        <div class="result-item">
+                            <div class="result-label">
+                                <span class="result-heading">
+                                    <i data-lucide="map"></i>
+                                    <span>Total distance</span>
+                                </span>
+                            </div>
+                            <div class="result-value" id="distanceValue">0 km</div>
+                            <div class="result-subtext" id="distanceDetail"></div>
+                        </div>
+
+                        <div class="result-item">
+                            <div class="result-label">
+                                <span class="result-heading">
+                                    <i data-lucide="clock-3"></i>
+                                    <span>Estimated duration</span>
+                                </span>
+                            </div>
+                            <div class="result-value" id="timeValue">0 min</div>
+                            <div class="result-subtext" id="timeDetail">Travel time uses live road guidance when available.</div>
+                        </div>
+
+                        <div class="result-item">
+                            <div class="result-label">
+                                <span class="result-heading">
+                                    <i data-lucide="wallet-cards"></i>
+                                    <span>Estimated toll cost</span>
+                                </span>
+                            </div>
+                            <div class="result-value" id="tollValue">INR 0</div>
+                            <div class="result-subtext" id="tollDetail">Toll estimates based on corridor profile.</div>
+                        </div>
+
+                        <div class="result-item">
+                            <div class="result-label">
+                                <span class="result-heading">
+                                    <i data-lucide="leaf"></i>
+                                    <span>Estimated CO2</span>
+                                </span>
+                            </div>
+                            <div class="result-value" id="emissionValue">0 kg</div>
+                            <div class="result-subtext" id="routeSummary">Environmental impact across selected path.</div>
+                        </div>
+
+                        <div class="chart-panel">
+                            <div class="result-label">
+                                <span class="result-heading">
+                                    <i data-lucide="chart-column-big"></i>
+                                    <span>Segment distances</span>
+                                </span>
+                            </div>
+                            <div class="chart-wrap">
+                                <canvas id="routeChart"></canvas>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <section class="comparison-panel" id="comparisonPanel" style="display: none;">
+                    <div class="result-label">
+                        <span class="result-heading">
+                            <i data-lucide="timer-reset"></i>
+                            <span>Algorithm comparison</span>
+                        </span>
+                    </div>
+                    <div class="result-subtext" id="comparisonSummary">Measured runtime for the requested route.</div>
+                    <div class="comparison-grid">
+                        <div class="comparison-card">
+                            <strong class="comparison-title">
+                                <i data-lucide="navigation"></i>
+                                <span>Dijkstra</span>
+                            </strong>
+                            <span id="dijkstraTime">0 ms</span>
+                        </div>
+                        <div class="comparison-card">
+                            <strong class="comparison-title">
+                                <i data-lucide="binary"></i>
+                                <span>Warshall</span>
+                            </strong>
+                            <span id="fwTime">0 ms</span>
+                        </div>
+                    </div>
+                    <div class="chart-panel comparison-chart-panel">
+                        <div class="chart-wrap comparison-chart-wrap">
+                            <canvas id="comparisonChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="export-actions" id="exportButtons" style="display: none; margin-bottom: 18px;">
+                    <div class="export-checkbox-group" onclick="document.getElementById('includeDetailedSteps').click()">
+                        <input type="checkbox" id="includeDetailedSteps" onclick="event.stopPropagation()">
+                        <label for="includeDetailedSteps">
+                            <span class="label-with-icon">
+                                <i data-lucide="list-checks" style="width: 16px; height: 16px;"></i>
+                                <span>Include turn-by-turn details in PDF</span>
+                            </span>
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="exportPdfButton" onclick="exportPDF()" style="padding: 10px 16px;">
+                        <i data-lucide="file-text"></i>
+                        <span>Export Road Trip PDF</span>
+                    </button>
+                </div>
+
+                <section class="results-panel" id="detailedDirectionsPanel" style="display: none;">
+                    <div class="result-item">
+                        <div class="result-label">
+                            <span class="result-heading">
+                                <i data-lucide="list-ordered"></i>
+                                <span>Turn-by-turn directions</span>
+                            </span>
+                        </div>
+                        <div class="steps-list" id="stepsList"></div>
+                    </div>
+                </section>
+                
+                <div style="margin-top: auto; padding: 24px 0 0; text-align: center; opacity: 0.6; font-size: 0.8rem; border-top: 1px solid rgba(255,255,255,0.12); letter-spacing: 0.05em; font-family: 'Outfit', sans-serif; color: var(--muted);">
+                    By Harshit Rawat
+                </div>
+            </div>
+        </aside>
+
+        <div id="map"></div>
+
+        <div class="map-legend">
+            <h3>Route Legend</h3>
+            <div class="legend-row"><span class="legend-dot" style="background: #2e8b57;"></span><span>Source</span><i data-lucide="circle-dot"></i></div>
+            <div class="legend-row"><span class="legend-dot" style="background: #f28c28;"></span><span>Intermediate stop</span><i data-lucide="waypoints"></i></div>
+            <div class="legend-row"><span class="legend-dot" style="background: #d64045;"></span><span>Destination</span><i data-lucide="map-pin"></i></div>
+            <div class="legend-row"><span class="legend-dot" style="background: #1f6f8b;"></span><span>Network city</span><i data-lucide="building-2"></i></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedAlgorithm = "dijkstra";
+        let currentRoute = null;
+        let latestComparisonData = null;
+        let routeMarkers = [];
+        let routePolyline = null;
+        let routeChart = null;
+        let comparisonChart = null;
+        let cityLayer = null;
+        let map = null;
+        let nodes = {};
+        let cityNames = [];
+        let nextStopId = 0;
+
+        const routeColors = {
+            network: "#1f6f8b",
+            route: "#14324a",
+            src: "#2e8b57",
+            stop: "#f28c28",
+            dst: "#d64045"
+        };
+
+        function hydrateIcons() {
+            if (window.lucide && typeof window.lucide.createIcons === "function") {
+                window.lucide.createIcons({ attrs: { "stroke-width": 2 } });
+            }
+        }
+
+        function initMap() {
+            map = L.map("map").setView([22.3039, 74.5], 5);
+
+            L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+                attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+                maxZoom: 19
+            }).addTo(map);
+        }
+
+        function populateSelect(select, selectedValue = "", includePlaceholder = false) {
+            select.innerHTML = "";
+
+            if (includePlaceholder) {
+                const placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = "Select city";
+                select.appendChild(placeholder);
+            }
+
+            cityNames.forEach((city) => {
+                const option = document.createElement("option");
+                option.value = city;
+                option.textContent = city;
+                select.appendChild(option);
+            });
+
+            if (selectedValue && cityNames.includes(selectedValue)) {
+                select.value = selectedValue;
+            } else if (includePlaceholder) {
+                select.value = "";
+            } else if (cityNames.length > 0) {
+                select.value = cityNames[0];
+            }
+        }
+
+        function createStopSelect(selectedValue = "") {
+            const select = document.createElement("select");
+            select.className = "stop-select";
+            populateSelect(select, selectedValue, true);
+            return select;
+        }
+
+        function formatAlgorithmName(algorithm) {
+            return algorithm === "floyd_warshall" ? "Warshall" : "Dijkstra";
+        }
+
+        function formatDuration(totalMinutes) {
+            const roundedMinutes = Math.round(totalMinutes);
+            const hours = Math.floor(roundedMinutes / 60);
+            const minutes = roundedMinutes % 60;
+
+            if (hours && minutes) {
+                return `${hours}h ${minutes}m`;
+            }
+
+            if (hours) {
+                return `${hours}h`;
+            }
+
+            return `${minutes} min`;
+        }
+
+        function formatCurrency(amount) {
+            return `INR ${Math.round(Number(amount || 0)).toLocaleString("en-IN")}`;
+        }
+
+        function formatDistanceKm(distance) {
+            return `${Number(distance || 0).toLocaleString("en-IN", {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 1
+            })} km`;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function buildRouteSummary(route) {
+            return [route.src].concat(route.stops || [], [route.dst]).join(" -> ");
+        }
+
+        function getDistanceDetailText(route, pendingAlgorithm = "") {
+            const detail = `${route.path.length} cities via ${formatAlgorithmName(route.algorithm)} | ${route.road_guidance_source}`;
+            if (pendingAlgorithm && pendingAlgorithm !== route.algorithm) {
+                return `${detail} | Rebuild the trip to apply ${formatAlgorithmName(pendingAlgorithm)}.`;
+            }
+            return detail;
+        }
+
+        function getPrintableDirections(route) {
+            if (Array.isArray(route.directions) && route.directions.length) {
+                return route.directions;
+            }
+
+            return (route.steps || []).map((step, index) => ({
+                index: index + 1,
+                leg: `${step.from} to ${step.to}`,
+                instruction: `Drive from ${step.from} to ${step.to}`,
+                highway: step.highway || step.road_name || "Road segment",
+                distance_km: step.distance,
+                time_minutes: step.time_minutes,
+            }));
+        }
+
+        function setLoading(isLoading) {
+            document.getElementById("loading").style.display = isLoading ? "block" : "none";
+        }
+
+        function clearCurrentRoute() {
+            if (routePolyline) {
+                map.removeLayer(routePolyline);
+                routePolyline = null;
+            }
+
+            routeMarkers.forEach((marker) => map.removeLayer(marker));
+            routeMarkers = [];
+
+            if (routeChart) {
+                routeChart.destroy();
+                routeChart = null;
+            }
+
+            if (comparisonChart) {
+                comparisonChart.destroy();
+                comparisonChart = null;
+            }
+        }
+
+        function drawCityMarkers() {
+            if (cityLayer) {
+                map.removeLayer(cityLayer);
+            }
+
+            const markers = cityNames.map((city) => {
+                const marker = L.circleMarker(nodes[city], {
+                    radius: 5,
+                    fillColor: routeColors.network,
+                    color: "#ffffff",
+                    weight: 1.5,
+                    fillOpacity: 0.95
+                }).bindTooltip(city);
+
+                marker.on("click", (e) => {
+                    L.DomEvent.stopPropagation(e);
+                    showCityIntel(city, marker);
+                });
+
+                return marker;
+            });
+
+            cityLayer = L.layerGroup(markers).addTo(map);
+        }
+
+        async function showCityIntel(city, marker) {
+            try {
+                const status = await fetchJson(`/city-status/${city}`);
+                const aqiClass = status.aqi <= 50 ? 'success' : status.aqi <= 100 ? 'warning' : 'danger';
+                
+                const popupContent = `
+                    <div style="min-width: 220px; font-family: 'Outfit', sans-serif;">
+                        <h3 style="margin: 0 0 10px; color: var(--ink); border-bottom: 2px solid var(--line); padding-bottom: 5px; font-size: 1.1rem;">
+                            ${city}
+                        </h3>
+                        <div style="display: grid; gap: 8px; font-size: 0.85rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: var(--muted); font-weight: 600;">AQI:</span>
+                                <span style="font-weight: 800; color: var(--${aqiClass});" title="${status.aqi_label}">${status.aqi}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: var(--muted); font-weight: 600;">Weather:</span>
+                                <span style="font-weight: 700; color: var(--sea);">${status.temperature} | ${status.condition}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: var(--muted); font-weight: 600;">Traffic:</span>
+                                <span style="font-weight: 700; color: var(--accent);">${status.traffic_status}</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <button onclick="setAsPoint('${city}', 'src')" style="padding: 7px; border-radius: 8px; border: 1px solid var(--success); background: #f0fdf4; color: var(--success); cursor: pointer; font-weight: 700; font-size: 0.75rem;">Set Start</button>
+                            <button onclick="setAsPoint('${city}', 'dst')" style="padding: 7px; border-radius: 8px; border: 1px solid var(--danger); background: #fef2f2; color: var(--danger); cursor: pointer; font-weight: 700; font-size: 0.75rem;">Set End</button>
+                        </div>
+                        <button onclick="addAsStopFromPopup('${city}')" style="margin-top: 8px; width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--sea); background: #eff6ff; color: var(--sea); cursor: pointer; font-weight: 700; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i>
+                            <span>Add as Intermediate Stop</span>
+                        </button>
+                        <p style="margin: 10px 0 0; font-size: 0.65rem; color: var(--muted); text-align: right;">Updated: ${status.last_updated}</p>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent).openPopup();
+                hydrateIcons();
+            } catch (error) {
+                console.error("Failed to load intel:", error);
+            }
+        }
+
+        window.setAsPoint = function(city, type) {
+            document.getElementById(type).value = city;
+            map.closePopup();
+        };
+
+        window.addAsStopFromPopup = function(city) {
+            const src = document.getElementById("src").value;
+            const dst = document.getElementById("dst").value;
+            const stops = getSelectedStops();
+
+            if (src === city || dst === city || stops.includes(city)) {
+                alert(`The city "${city}" is already selected in your trip. Deselect it to proceed with changes.`);
+                return;
+            }
+
+            addStop(city);
+            map.closePopup();
+        };
+
+        window.resetPlanner = function() {
+            document.getElementById("src").value = "";
+            document.getElementById("dst").value = "";
+            document.getElementById("stopsContainer").innerHTML = "";
+            document.getElementById("includeDetailedSteps").checked = false;
+            
+            document.getElementById("resultsOverview").style.display = "none";
+            document.getElementById("comparisonPanel").style.display = "none";
+            document.getElementById("exportButtons").style.display = "none";
+            document.getElementById("detailedDirectionsPanel").style.display = "none";
+            
+            clearCurrentRoute();
+            map.setView([22.3039, 74.5], 5);
+        };
+
+        function addRouteMarker(city, role, tooltipText, popupText) {
+            const marker = L.circleMarker(nodes[city], {
+                radius: role === "stop" ? 10 : 12,
+                fillColor: routeColors[role],
+                color: "#ffffff",
+                weight: 3,
+                fillOpacity: 1,
+                renderer: L.canvas()
+            }).addTo(map);
+
+            marker.on("click", (e) => {
+                L.DomEvent.stopPropagation(e);
+                showCityIntel(city, marker);
+            });
+
+            marker.bindTooltip(tooltipText, { permanent: true, direction: "top", offset: [0, -10] });
+            routeMarkers.push(marker);
+        }
+
+        async function fetchJson(url, options = {}) {
+            const response = await fetch(url, options);
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(data.error || `Request failed with status ${response.status}.`);
+            }
+
+            return data;
+        }
+
+        function updateMetrics(metrics) {
+            document.getElementById("metricNodes").textContent = metrics.total_nodes;
+            document.getElementById("metricEdges").textContent = metrics.total_edges;
+            document.getElementById("metricConnectivity").textContent = `${metrics.connectivity}%`;
+            document.getElementById("metricDiameter").textContent = `${metrics.network_reach} km`;
+        }
+
+        async function loadCities() {
+            nodes = await fetchJson("/nodes");
+            cityNames = Object.keys(nodes).sort();
+
+            populateSelect(document.getElementById("src"), "Delhi", true);
+            populateSelect(document.getElementById("dst"), "Mumbai", true);
+
+            drawCityMarkers();
+            await loadMetrics();
+        }
+
+        async function loadMetrics() {
+            try {
+                const metrics = await fetchJson("/metrics");
+                updateMetrics(metrics);
+            } catch (error) {
+                console.error("Failed to load metrics:", error);
+            }
+        }
+
+        function setAlgorithm(algorithm, buttonElement) {
+            selectedAlgorithm = algorithm;
+
+            document.querySelectorAll(".algo-btn").forEach((button) => {
+                button.classList.toggle("active", button === buttonElement);
+            });
+
+            if (currentRoute) {
+                document.getElementById("distanceDetail").textContent =
+                    getDistanceDetailText(currentRoute, selectedAlgorithm);
+            }
+        }
+
+        function addStop(selectedValue = "") {
+            if (!cityNames.length) {
+                return;
+            }
+
+            nextStopId += 1;
+            const stopId = `stop-${nextStopId}`;
+            const stopItem = document.createElement("div");
+            stopItem.className = "stop-item";
+            stopItem.id = stopId;
+
+            const select = createStopSelect(selectedValue);
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "stop-remove";
+            button.innerHTML = `
+                <i data-lucide="trash-2"></i>
+                <span>Remove</span>
+            `;
+            button.onclick = () => {
+                const stopNode = document.getElementById(stopId);
+                if (stopNode) {
+                    stopNode.remove();
+                }
+            };
+
+            stopItem.appendChild(select);
+            stopItem.appendChild(button);
+            document.getElementById("stopsContainer").appendChild(stopItem);
+            hydrateIcons(stopItem);
+        }
+
+        function getSelectedStops() {
+            return Array.from(document.querySelectorAll(".stop-select"))
+                .map((select) => select.value)
+                .filter(Boolean);
+        }
+
+        function renderRouteChart(steps) {
+            if (!window.Chart) {
+                return;
+            }
+
+            const chartCanvas = document.getElementById("routeChart");
+            routeChart = new Chart(chartCanvas, {
+                type: "bar",
+                data: {
+                    labels: steps.map((step) => `${step.from} -> ${step.to}`),
+                    datasets: [{
+                        label: "Distance (km)",
+                        data: steps.map((step) => step.distance),
+                        backgroundColor: "#f28c28",
+                        borderRadius: 8,
+                        maxBarThickness: 30
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: "Route Segments",
+                                color: "#1e293b",
+                                font: { weight: "600" }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: "#64748b",
+                                autoSkip: true,
+                                maxRotation: 0
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: "Distance (km)",
+                                color: "#1e293b",
+                                font: { weight: "600" }
+                            },
+                            beginAtZero: true,
+                            grid: {
+                                color: "rgba(20, 50, 74, 0.08)"
+                            },
+                            ticks: {
+                                color: "#64748b"
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderComparisonChart(data) {
+            if (!window.Chart) {
+                return;
+            }
+
+            const chartCanvas = document.getElementById("comparisonChart");
+            if (!chartCanvas) {
+                return;
+            }
+
+            if (comparisonChart) {
+                comparisonChart.destroy();
+            }
+
+            comparisonChart = new Chart(chartCanvas, {
+                type: "bar",
+                data: {
+                    labels: ["Dijkstra", "Warshall"],
+                    datasets: [{
+                        label: "Execution time (ms)",
+                        data: [data.dijkstra.time_ms, data.floyd_warshall.time_ms],
+                        backgroundColor: ["#1f6f8b", "#f28c28"],
+                        borderRadius: 8,
+                        maxBarThickness: 34
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: "Algorithm Strategy",
+                                color: "#1e293b",
+                                font: { weight: "600" }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: "#64748b",
+                                maxRotation: 0
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: "Time (ms)",
+                                color: "#1e293b",
+                                font: { weight: "600" }
+                            },
+                            beginAtZero: true,
+                            grid: {
+                                color: "rgba(20, 50, 74, 0.08)"
+                            },
+                            ticks: {
+                                color: "#64748b"
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function displayRoute(route) {
+            clearCurrentRoute();
+
+            const geometry = route.geometry && route.geometry.length ? route.geometry : route.path.map((city) => nodes[city]);
+            const printableDirections = getPrintableDirections(route);
+
+            routePolyline = L.polyline(geometry, {
+                color: routeColors.route,
+                weight: 5,
+                opacity: 0.88,
+                lineCap: "round",
+                lineJoin: "round",
+                renderer: L.canvas()
+            }).addTo(map);
+
+            addRouteMarker(route.src, "src", `Start: ${route.src}`, "Source city");
+            route.stops.forEach((stop, index) => {
+                addRouteMarker(stop, "stop", `Stop ${index + 1}: ${stop}`, `Intermediate stop ${index + 1}`);
+            });
+            addRouteMarker(route.dst, "dst", `Destination: ${route.dst}`, "Destination city");
+
+            document.getElementById("distanceValue").textContent = formatDistanceKm(route.distance);
+            document.getElementById("distanceDetail").textContent =
+                getDistanceDetailText(route);
+            document.getElementById("timeValue").textContent = formatDuration(route.time_minutes || route.time);
+            document.getElementById("timeDetail").textContent =
+                route.directions && route.directions.length
+                    ? "Travel time is based on live road guidance."
+                    : "Travel time is estimated from the configured corridor network.";
+            document.getElementById("tollValue").textContent = formatCurrency(route.estimated_toll_cost);
+            document.getElementById("tollDetail").textContent = route.toll_note;
+            document.getElementById("emissionValue").textContent = `${route.co2_emissions} kg`;
+            document.getElementById("routeSummary").textContent = `${buildRouteSummary(route)} | ${route.eco_tips[0] || "Drive smoothly to reduce emissions."}`;
+
+            document.getElementById("resultsOverview").style.display = "block";
+            document.getElementById("exportButtons").style.display = "flex";
+            document.getElementById("detailedDirectionsPanel").style.display = "block";
+
+            const stepsList = document.getElementById("stepsList");
+            stepsList.innerHTML = "";
+
+            printableDirections.forEach((step, index) => {
+                const roadLabel = escapeHtml(step.highway || step.road || step.road_name || "Road segment");
+                const instruction = escapeHtml(step.instruction || `${step.from} to ${step.to}`);
+                const secondary = step.leg ? `${escapeHtml(step.leg)} | ${roadLabel}` : roadLabel;
+                const tip = step.city_tip ? `<div style="font-size: 0.75rem; color: var(--success); font-weight: 600; margin-top: 4px;">🌱 Tip: ${escapeHtml(step.city_tip)}</div>` : "";
+                
+                const stepItem = document.createElement("div");
+                stepItem.className = "step-item";
+                stepItem.innerHTML = `
+                    <div class="step-number">${index + 1}</div>
+                    <div class="step-text"><strong>${instruction}</strong><br><span class="result-subtext">${secondary}</span>${tip}</div>
+                    <div class="step-distance">${formatDistanceKm(step.distance_km ?? step.distance)}<br><span class="result-subtext">${formatDuration(step.time_minutes)}</span></div>
+                `;
+                stepsList.appendChild(stepItem);
+            });
+
+            renderRouteChart(route.steps);
+
+            if (routePolyline.getBounds().isValid()) {
+                map.fitBounds(routePolyline.getBounds(), { padding: [60, 60] });
+            }
+
+            // Explicitly show all results panels and the overview section
+            const overviewEl = document.getElementById("resultsOverview");
+            overviewEl.style.display = "block";
+            overviewEl.style.visibility = "visible";
+            overviewEl.style.opacity = "1";
+            
+            document.getElementById("exportButtons").style.display = "flex";
+            document.getElementById("detailedDirectionsPanel").style.display = "block";
+            
+            // Refresh chart layout to ensure visibility
+            if (routeChart) routeChart.resize();
+        }
+
+        async function compareAlgorithms(src, dst, stops) {
+            try {
+                const data = await fetchJson("/compare-algorithms", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ src, dst, stops })
+                });
+
+                latestComparisonData = data;
+                document.getElementById("dijkstraTime").textContent = `${data.dijkstra.time_ms} ms`;
+                document.getElementById("fwTime").textContent = `${data.floyd_warshall.time_ms} ms`;
+                document.getElementById("comparisonSummary").textContent =
+                    data.same_result
+                        ? "Both algorithms produced the same optimal distance for this request."
+                        : "The algorithms produced different route totals and should be reviewed.";
+                renderComparisonChart(data);
+                document.getElementById("comparisonPanel").style.display = "block";
+            } catch (error) {
+                console.error("Failed to compare algorithms:", error);
+                latestComparisonData = null;
+                document.getElementById("comparisonPanel").style.display = "none";
+            }
+        }
+
+        async function calculateRoute(event) {
+            event.preventDefault();
+
+            const src = document.getElementById("src").value;
+            const dst = document.getElementById("dst").value;
+            const stops = getSelectedStops();
+
+            setLoading(true);
+            document.getElementById("resultsOverview").style.display = "none";
+            document.getElementById("comparisonPanel").style.display = "none";
+            document.getElementById("exportButtons").style.display = "none";
+            document.getElementById("detailedDirectionsPanel").style.display = "none";
+            latestComparisonData = null;
+
+            try {
+                const route = await fetchJson("/calculate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        src,
+                        dst,
+                        stops,
+                        algorithm: selectedAlgorithm
+                    })
+                });
+
+                currentRoute = route;
+                displayRoute(route);
+                setLoading(false); // Hide loading as soon as the main route is ready
+
+                // Secondary features load in the background
+                Promise.all([
+                    loadMetrics(),
+                    compareAlgorithms(src, dst, stops)
+                ]).catch(err => console.error("Background info load failed:", err));
+            } catch (error) {
+                console.error("Failed to calculate route:", error);
+                alert(error.message || "Unable to calculate the route.");
+                setLoading(false);
+            }
+        }
+
+        async function exportPDF() {
+            if (!currentRoute) {
+                return;
+            }
+
+            const button = document.getElementById("exportPdfButton");
+            const originalMarkup = button.innerHTML;
+            button.disabled = true;
+            button.textContent = "Preparing PDF...";
+
+            try {
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    throw new Error("jsPDF is unavailable.");
+                }
+
+                const includeDetailedSteps = document.getElementById("includeDetailedSteps").checked;
+                const printableDirections = getPrintableDirections(currentRoute);
+                const mapElement = document.getElementById("map");
+                
+                // Ensure map layout is stable and centered before capture
+                map.invalidateSize();
+                if (routePolyline) {
+                    map.fitBounds(routePolyline.getBounds(), { animate: false, padding: [40, 40] });
+                }
+
+                // Small delay to ensure Leaflet's canvas renderer has updated after fitBounds
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                // Temporarily hide network grid dots for clean PDF capture
+                if (window.cityLayer) {
+                    cityLayer.remove();
+                }
+
+                const mapCanvas = await html2canvas(mapElement, {
+                    useCORS: true,
+                    scale: 2,
+                    backgroundColor: "#d9e4ef",
+                    logging: false,
+                    width: mapElement.offsetWidth,
+                    height: mapElement.offsetHeight,
+                    scrollX: 0,
+                    scrollY: 0,
+                    x: 0,
+                    y: 0
+                });
+                const mapImage = mapCanvas.toDataURL("image/png");
+                
+                const segmentCanvas = document.getElementById("routeChart");
+                const segmentImage = segmentCanvas ? segmentCanvas.toDataURL("image/png") : null;
+                
+                const comparisonImage = comparisonChart
+                    ? comparisonChart.toBase64Image("image/png", 1)
+                    : null;
+
+                const pdf = new window.jspdf.jsPDF({
+                    orientation: "portrait",
+                    unit: "mm",
+                    format: "a4"
+                });
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const contentWidth = pageWidth - 28;
+                const lineHeight = 4.6;
+                const footerY = pageHeight - 7;
+
+                const addPageHeader = (title, subtitle, fillColor, compact = false) => {
+                    const headerHeight = compact ? 16 : 26;
+                    pdf.setFillColor(...fillColor);
+                    pdf.rect(0, 0, pageWidth, headerHeight, "F");
+                    pdf.setTextColor(255, 255, 255);
+                    pdf.setFont("helvetica", "bold");
+                    pdf.setFontSize(compact ? 11 : 17);
+                    pdf.text(title, 14, compact ? 10 : 16);
+                    if (!compact) {
+                        pdf.setFontSize(9);
+                        pdf.text(subtitle, 14, 22);
+                    }
+                    pdf.setTextColor(30, 41, 59);
+                    pdf.setFont("helvetica", "normal");
+                    return compact ? 24 : 34;
+                };
+
+                const addPageFooter = (note) => {
+                    pdf.setTextColor(100, 116, 139);
+                    pdf.setFont("helvetica", "normal");
+                    pdf.setFontSize(8);
+                    pdf.text(note, 14, footerY);
+                    pdf.setTextColor(30, 41, 59);
+                };
+
+                const writeWrappedText = (text, x, y, width, options = {}) => {
+                    const {
+                        fontSize = 9,
+                        fontStyle = "normal",
+                        color = [30, 41, 59]
+                    } = options;
+                    const lines = pdf.splitTextToSize(text, width);
+                    pdf.setFont("helvetica", fontStyle);
+                    pdf.setFontSize(fontSize);
+                    pdf.setTextColor(...color);
+                    pdf.text(lines, x, y);
+                    pdf.setTextColor(30, 41, 59);
+                    return y + (lines.length * lineHeight);
+                };
+
+                let y = addPageHeader(
+                    "Road Trip Brief",
+                    "Summary, corridor guide, and print-ready directions",
+                    [20, 50, 74]
+                );
+
+                y = writeWrappedText(`Route: ${buildRouteSummary(currentRoute)}`, 14, y, contentWidth, {
+                    fontSize: 10,
+                    fontStyle: "bold"
+                });
+                y = writeWrappedText(`Selected algorithm: ${formatAlgorithmName(currentRoute.algorithm)}`, 14, y + 1, contentWidth, { fontSize: 10 });
+                y = writeWrappedText(`Road guidance source: ${currentRoute.road_guidance_source}`, 14, y + 1, contentWidth, { fontSize: 10 });
+
+                const stats = [
+                    { label: "Distance", value: formatDistanceKm(currentRoute.distance) },
+                    { label: "Drive time", value: formatDuration(currentRoute.time_minutes || currentRoute.time) },
+                    { label: "Toll estimate", value: formatCurrency(currentRoute.estimated_toll_cost) },
+                    { label: "CO2 output", value: `${currentRoute.co2_emissions} kg` }
+                ];
+
+                let statX = 14;
+                const statY = y + 6;
+                stats.forEach((stat) => {
+                    pdf.setFillColor(248, 250, 252);
+                    pdf.roundedRect(statX, statY, 42, 20, 4, 4, "F");
+                    pdf.setFont("helvetica", "bold");
+                    pdf.setFontSize(8);
+                    pdf.text(stat.label, statX + 3, statY + 6);
+                    pdf.setFontSize(11);
+                    pdf.text(stat.value, statX + 3, statY + 14);
+                    statX += 44;
+                });
+
+                const mapY = statY + 27;
+                const mapDisplayWidth = 182;
+                const mapDisplayHeight = (mapCanvas.height / mapCanvas.width) * mapDisplayWidth;
+                
+                pdf.addImage(mapImage, "PNG", 14, mapY, mapDisplayWidth, mapDisplayHeight);
+                pdf.setDrawColor(20, 50, 74);
+                pdf.rect(14, mapY, mapDisplayWidth, mapDisplayHeight);
+
+                y = mapY + mapDisplayHeight + 8;
+                pdf.setFont("helvetica", "bold");
+                pdf.setFontSize(12);
+                pdf.text("Segment-by-segment overview", 14, y);
+                y += 7;
+
+                let fittedCorridors = 0;
+                currentRoute.steps.forEach((step, index) => {
+                    const line = `${index + 1}. ${step.from} to ${step.to} via ${step.highway} | ${formatDistanceKm(step.distance)} | ${formatDuration(step.time_minutes)} | Toll ~ ${formatCurrency(step.estimated_toll)}`;
+                    const wrapped = pdf.splitTextToSize(line, 180);
+                    const blockHeight = wrapped.length * lineHeight + 1;
+                    if (y + blockHeight <= 270) {
+                        pdf.setFont("helvetica", "normal");
+                        pdf.setFontSize(9);
+                        pdf.text(wrapped, 14, y);
+                        y += blockHeight + 1.5;
+                        fittedCorridors += 1;
+                    }
+                });
+
+                if (fittedCorridors < currentRoute.steps.length) {
+                    pdf.setTextColor(100, 116, 139);
+                    pdf.setFontSize(8);
+                    pdf.text(
+                        `${currentRoute.steps.length - fittedCorridors} additional corridor leg(s) continue in the detailed driving guide.`,
+                        14,
+                        274
+                    );
+                    pdf.setTextColor(30, 41, 59);
+                }
+
+                const footerNote = includeDetailedSteps 
+                    ? "Carry the next pages for emissions guidance, algorithm analytics, and detailed turn-by-turn instructions."
+                    : "Carry the next page for emissions guidance and algorithm analytics.";
+                addPageFooter(footerNote);
+
+                pdf.addPage();
+                y = addPageHeader(
+                    "Sustainability and Algorithm Review",
+                    "Trip impact and routing benchmark snapshot",
+                    [46, 139, 87]
+                );
+
+                y = writeWrappedText(`Estimated trip emissions: ${currentRoute.co2_emissions} kg CO2`, 14, y + 2, contentWidth, {
+                    fontSize: 11,
+                    fontStyle: "bold"
+                });
+                y = writeWrappedText(currentRoute.toll_note, 14, y + 2, contentWidth, {
+                    fontSize: 9,
+                    color: [100, 116, 139]
+                });
+
+                pdf.setFont("helvetica", "bold");
+                pdf.setFontSize(11);
+                pdf.text("Eco-friendly driving ideas", 14, y + 8);
+                y += 14;
+
+                currentRoute.eco_tips.forEach((tip) => {
+                    y = writeWrappedText(`- ${tip}`, 16, y, 178, { fontSize: 9 });
+                    y += 1.5;
+                });
+
+                if (segmentImage) {
+                    y += 8;
+                    pdf.setFont("helvetica", "bold");
+                    pdf.setFontSize(11);
+                    pdf.text("Segment Distance Breakdown", 14, y);
+                    y += 6;
+                    pdf.addImage(segmentImage, "PNG", 30, y, 150, 60);
+                    y += 68;
+                    pdf.setFont("helvetica", "normal");
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(100, 116, 139);
+                    pdf.text("X-Axis: Route Segments | Y-Axis: Distance in Kilometers (km)", 14, y - 5);
+                    pdf.setTextColor(30, 41, 59);
+                }
+
+                if (comparisonImage && latestComparisonData) {
+                    y += 10;
+                    pdf.setFont("helvetica", "bold");
+                    pdf.setFontSize(11);
+                    pdf.text("Algorithm Performance Benchmark", 14, y);
+                    y += 6;
+                    pdf.addImage(comparisonImage, "PNG", 30, y, 150, 60);
+
+                    const graphTextY = y + 68;
+                    pdf.setFont("helvetica", "normal");
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(100, 116, 139);
+                    pdf.text("X-Axis: Algorithm Strategy | Y-Axis: Execution Time in Milliseconds (ms)", 14, graphTextY - 5);
+                    pdf.setTextColor(30, 41, 59);
+                    
+                    pdf.setFontSize(9);
+                    pdf.text(`Dijkstra: ${latestComparisonData.dijkstra.time_ms} ms`, 14, graphTextY);
+                    pdf.text(`Floyd-Warshall: ${latestComparisonData.floyd_warshall.time_ms} ms`, 14, graphTextY + 6);
+                    writeWrappedText(
+                        latestComparisonData.same_result
+                            ? "Both algorithms returned the same route distance for this trip."
+                            : "The algorithms produced different route totals for this trip.",
+                        14,
+                        graphTextY + 12,
+                        contentWidth,
+                        { fontSize: 9 }
+                    );
+                } else {
+                    writeWrappedText(
+                        "Algorithm timing data was not available for this export. Rebuild the route to refresh the benchmark chart.",
+                        14,
+                        y + 12,
+                        contentWidth,
+                        { fontSize: 9 }
+                    );
+                }
+
+                if (includeDetailedSteps) {
+                    addPageFooter("Algorithm benchmarks and eco tips are on page 2. Detailed guide begins on page 3.");
+                } else {
+                    addPageFooter("Road trip summary provided by Indian Smart Transit Network.");
+                }
+
+                if (includeDetailedSteps) {
+                    pdf.addPage();
+                    y = addPageHeader(
+                        "Print-Ready Driving Guide",
+                        "Carry this section if you are travelling with the printed brief only.",
+                        [31, 111, 139]
+                    );
+
+                    y = writeWrappedText(
+                        `Trip reminder: ${buildRouteSummary(currentRoute)} | Total distance ${formatDistanceKm(currentRoute.distance)} | Total time ${formatDuration(currentRoute.time_minutes || currentRoute.time)} | Toll estimate ${formatCurrency(currentRoute.estimated_toll_cost)}`,
+                        14,
+                        y,
+                        contentWidth,
+                        { fontSize: 9 }
+                    );
+                    y += 4;
+
+                    let currentLeg = "";
+                    printableDirections.forEach((direction, index) => {
+                        const instruction = `${index + 1}. ${direction.instruction}`;
+                        const roadName = direction.highway || direction.road || "Road segment";
+                        const meta = `Road: ${roadName} | Distance: ${formatDistanceKm(direction.distance_km ?? direction.distance)} | Time: ${formatDuration(direction.time_minutes)}`;
+                        const wrappedInstruction = pdf.splitTextToSize(instruction, 176);
+                        const wrappedMeta = pdf.splitTextToSize(meta, 174);
+                        const legTitle = direction.leg || "Trip segment";
+                        const blockHeight = (wrappedInstruction.length + wrappedMeta.length) * lineHeight + 8;
+                        const needsLegHeader = legTitle !== currentLeg;
+                        const reservedHeight = blockHeight + (needsLegHeader ? 10 : 0);
+
+                        if (y + reservedHeight > 282) {
+                            addPageFooter("Continue following the next page in sequence until you reach the destination.");
+                            pdf.addPage();
+                            y = addPageHeader(
+                                "Print-Ready Driving Guide (continued)",
+                                "Continue through the route steps in order.",
+                                [31, 111, 139],
+                                true
+                            );
+                            currentLeg = "";
+                        }
+
+                        if (legTitle !== currentLeg) {
+                            pdf.setFillColor(242, 245, 249);
+                            pdf.roundedRect(14, y, 182, 8, 3, 3, "F");
+                            pdf.setFont("helvetica", "bold");
+                            pdf.setFontSize(9);
+                            pdf.text(legTitle, 16, y + 5.3);
+                            y += 12;
+                            currentLeg = legTitle;
+                        }
+
+                        pdf.setFont("helvetica", "bold");
+                        pdf.setFontSize(9);
+                        pdf.text(wrappedInstruction, 14, y);
+                        y += wrappedInstruction.length * lineHeight;
+                        pdf.setFont("helvetica", "normal");
+                        pdf.setTextColor(100, 116, 139);
+                        pdf.text(wrappedMeta, 16, y + 1);
+                        pdf.setTextColor(30, 41, 59);
+                        y += wrappedMeta.length * lineHeight + 4;
+
+                        // Add Eco Tip if available in the backend direction object
+                        if (direction.city_tip) {
+                            pdf.setTextColor(46, 139, 87);
+                            pdf.setFont("helvetica", "italic");
+                            pdf.setFontSize(8);
+                            pdf.text(`   🌱 Eco Tip: ${direction.city_tip}`, 14, y - 2);
+                            pdf.setTextColor(30, 41, 59);
+                            y += 4;
+                        }
+                    });
+
+                    addPageFooter("Road names and directions come from the live guidance source when available, with corridor fallback otherwise.");
+                }
+
+                const safeName = `${currentRoute.src}_${currentRoute.dst}`.toLowerCase().replace(/\s+/g, "_");
+                pdf.save(`route_${safeName}.pdf`);
+            } catch (error) {
+                console.error("PDF export failed:", error);
+                alert("Unable to export the PDF in this browser session.");
+            } finally {
+                // Restore network grid dots
+                if (window.cityLayer && map) {
+                    cityLayer.addTo(map);
+                }
+                button.disabled = false;
+                button.innerHTML = originalMarkup;
+                hydrateIcons();
+            }
+        }
+
+        window.addEventListener("load", async () => {
+            hydrateIcons();
+            initMap();
+
+            try {
+                await loadCities();
+            } catch (error) {
+                console.error("Initial load failed:", error);
+                alert("Unable to load the road trip planner data. Please start the Flask server and try again.");
+            }
+        });
+    </script>
+</body>
+</html>
