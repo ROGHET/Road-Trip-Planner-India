@@ -125,11 +125,12 @@ road-trip-planner-india/
 
 ---
 
-## 👤 Author
+## 👨‍💻 Author
 
-**Harshit Rawat**
+**Harshit Rawat** *K. J. Somaiya School of Engineering*
 
-Discrete Mathematics Mini Project | CODEX-AG Overhaul
+📧 **Email:** harshitrawat3125@gmail.com, rawatharshit3424@gmail.com, harshit.rawat@somaiya.edu  
+💼 **GitHub:** [github.com/ROGHET](https://github.com/ROGHET)
 
 ---
 <div align="center">
